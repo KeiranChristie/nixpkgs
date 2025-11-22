@@ -51,6 +51,9 @@ stdenv.mkDerivation (finalAttrs: {
   cmakeFlags = [
     "-DCMAKE_PREFIX_PATH=${lib.makeSearchPath "" [ qt6.qtbase qt6.qtwebengine ]}"
     "-DQt6_DIR=${qt6.qtbase}/lib/cmake/Qt6"
+    # Explicitly disable Qt5 to prevent CMake from finding it
+    "-DCMAKE_DISABLE_FIND_PACKAGE_Qt5=TRUE"
+    "-DQt5_DIR="
     # Set paths for WebEngine components to help Qt6Config.cmake find them
     "-DQt6WebEngineCore_DIR=${qt6.qtwebengine}/lib/cmake/Qt6WebEngineCore"
     "-DQt6WebEngineWidgets_DIR=${qt6.qtwebengine}/lib/cmake/Qt6WebEngineWidgets"
@@ -172,12 +175,22 @@ find_package(Qt6WebEngine REQUIRED)\
       grep -n "find_package" CMakeLists.txt | head -20 || true
     fi
     
-    # Replace Qt5:: references with Qt6:: in ALL CMakeLists.txt files
-    echo "Looking for Qt5:: references in all CMakeLists.txt files..."
-    find . -name "CMakeLists.txt" -type f -exec grep -l "Qt5::" {} \; || true
-    find . -name "CMakeLists.txt" -type f -exec sed -i 's/Qt5::/Qt6::/g' {} \;
-    echo "After replacing Qt5:: with Qt6:: in all files:"
-    find . -name "CMakeLists.txt" -type f -exec grep -H "Qt5::" {} \; || echo "No Qt5:: found (good!)"
+    # Replace ALL Qt5 references with Qt6 in ALL build system files
+    echo "Looking for Qt5 references in all build system files..."
+    find . \( -name "CMakeLists.txt" -o -name "*.cmake" -o -name "*.pro" -o -name "*.pri" \) -type f -exec grep -l -i "qt5" {} \; || true
+    # Replace Qt5:: with Qt6::
+    find . \( -name "CMakeLists.txt" -o -name "*.cmake" -o -name "*.pro" -o -name "*.pri" \) -type f -exec sed -i 's/Qt5::/Qt6::/g' {} \;
+    # Replace find_package(Qt5 with find_package(Qt6
+    find . \( -name "CMakeLists.txt" -o -name "*.cmake" \) -type f -exec sed -i 's/find_package(Qt5/find_package(Qt6/g' {} \;
+    # Replace QT_VERSION = 5 with QT_VERSION = 6
+    find . \( -name "*.pro" -o -name "*.pri" \) -type f -exec sed -i 's/QT_VERSION\s*=\s*5/QT_VERSION = 6/g' {} \;
+    find . \( -name "*.pro" -o -name "*.pri" \) -type f -exec sed -i 's/QT_VERSION\s*=\s*"5"/QT_VERSION = "6"/g' {} \;
+    # Replace any remaining Qt5 references (case insensitive)
+    find . \( -name "CMakeLists.txt" -o -name "*.cmake" -o -name "*.pro" -o -name "*.pri" \) -type f -exec sed -i 's/Qt5/Qt6/g' {} \;
+    find . \( -name "CMakeLists.txt" -o -name "*.cmake" -o -name "*.pro" -o -name "*.pri" \) -type f -exec sed -i 's/qt5/qt6/g' {} \;
+    find . \( -name "CMakeLists.txt" -o -name "*.cmake" -o -name "*.pro" -o -name "*.pri" \) -type f -exec sed -i 's/QT5/QT6/g' {} \;
+    echo "After replacing Qt5 with Qt6 in all files:"
+    find . \( -name "CMakeLists.txt" -o -name "*.cmake" -o -name "*.pro" -o -name "*.pri" \) -type f -exec grep -H -i "qt5" {} \; || echo "No Qt5 found (good!)"
     
     # Replace Qt6::WebEngine with Qt6::WebEngineWidgets in ALL CMakeLists.txt files
     # Qt6::WebEngine doesn't exist - it's split into WebEngineCore, WebEngineWidgets, WebEngineQuick
@@ -208,9 +221,13 @@ find_package(Qt6WebEngine REQUIRED)\
     
     # Fix Qt6 header includes in source files
     echo "Fixing Qt6 header includes in source files..."
+    # First, replace any Qt5 references in source files
+    echo "Replacing Qt5 references in source files..."
+    find . \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \) | xargs sed -i 's/Qt5::/Qt6::/g' || true
+    find . \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \) | xargs sed -i 's/Qt5/Qt6/g' || true
     # QtWebEngine -> QtWebEngineWidgets
-    find . \( -name "*.cpp" -o -name "*.h" \) | xargs sed -i 's/#include <QtWebEngine>/#include <QtWebEngineWidgets>/g' || true
-    find . \( -name "*.cpp" -o -name "*.h" \) | xargs sed -i 's/#include "QtWebEngine"/#include "QtWebEngineWidgets"/g' || true
+    find . \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \) | xargs sed -i 's/#include <QtWebEngine>/#include <QtWebEngineWidgets>/g' || true
+    find . \( -name "*.cpp" -o -name "*.h" -o -name "*.hpp" \) | xargs sed -i 's/#include "QtWebEngine"/#include "QtWebEngineWidgets"/g' || true
     # QtGui/QOpenGLFramebufferObject -> QtOpenGL/QOpenGLFramebufferObject in Qt6
     find . \( -name "*.cpp" -o -name "*.h" \) | xargs sed -i 's|#include <QtGui/QOpenGLFramebufferObject>|#include <QtOpenGL/QOpenGLFramebufferObject>|g' || true
     find . \( -name "*.cpp" -o -name "*.h" \) | xargs sed -i 's|#include "QtGui/QOpenGLFramebufferObject"|#include "QtOpenGL/QOpenGLFramebufferObject"|g' || true
