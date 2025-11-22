@@ -94,19 +94,19 @@ stdenv.mkDerivation (finalAttrs: {
         
         # Check if WebEngine appears in the next 10 lines
         if sed -n "''${QT6_LINE},''$((QT6_LINE + 10))p" CMakeLists.txt | grep -qi webengine; then
-          echo "Found WebEngine near find_package, replacing find_package line"
-          # Read the original line
+          echo "Found WebEngine near find_package, inserting WebEngine component finds"
+          # Read the original line to preserve it
           ORIGINAL_LINE=$(sed -n "''${QT6_LINE}p" CMakeLists.txt)
           echo "Original line: $ORIGINAL_LINE"
-          # Use substituteInPlace to replace the line with WebEngine finds + original line
-          # First, create the replacement text
-          REPLACEMENT="# Find Qt6WebEngine components separately (Nixpkgs has them as separate packages)
-find_package(Qt6WebEngineCore REQUIRED)
-find_package(Qt6WebEngineWidgets REQUIRED)
-find_package(Qt6WebEngineQuick REQUIRED)
-$ORIGINAL_LINE"
-          # Use substituteInPlace to replace
-          substituteInPlace CMakeLists.txt --replace "$ORIGINAL_LINE" "$REPLACEMENT"
+          # Create a patch by inserting lines before the find_package line
+          # Use head and tail to split the file, insert the new lines, then rejoin
+          head -n "''$((QT6_LINE - 1))" CMakeLists.txt > CMakeLists.txt.new
+          echo "# Find Qt6WebEngine components separately (Nixpkgs has them as separate packages)" >> CMakeLists.txt.new
+          echo "find_package(Qt6WebEngineCore REQUIRED)" >> CMakeLists.txt.new
+          echo "find_package(Qt6WebEngineWidgets REQUIRED)" >> CMakeLists.txt.new
+          echo "find_package(Qt6WebEngineQuick REQUIRED)" >> CMakeLists.txt.new
+          tail -n +"''${QT6_LINE}" CMakeLists.txt >> CMakeLists.txt.new
+          mv CMakeLists.txt.new CMakeLists.txt
           
           # Now remove WebEngine from the Qt6 find_package call (check next 10 lines)
           echo "Removing WebEngine from line $QT6_LINE and following lines"
