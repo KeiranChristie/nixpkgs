@@ -56,8 +56,26 @@ stdenv.mkDerivation (finalAttrs: {
   prePatch = ''
     # Debug: show current directory and file existence
     echo "Current directory: $(pwd)"
-    echo "Looking for deps/singleapplication/CMakeLists.txt..."
+    echo "Looking for CMakeLists.txt files..."
     find . -name "CMakeLists.txt" -type f | head -10
+    
+    # Patch main CMakeLists.txt to find Qt6WebEngine separately
+    # Qt6Config.cmake looks for WebEngine relative to qtbase, but in Nixpkgs
+    # they're separate packages, so we need to find Qt6WebEngine first
+    if [ -f CMakeLists.txt ]; then
+      echo "Patching main CMakeLists.txt..."
+      # Find Qt6WebEngine separately before Qt6 tries to find it as a component
+      # Insert after cmake_minimum_required and project, but before find_package(Qt6)
+      sed -i '/find_package(Qt6.*WebEngine/i\
+# Find Qt6WebEngine separately (Nixpkgs has it as a separate package)\
+find_package(Qt6WebEngine REQUIRED)\
+' CMakeLists.txt
+      
+      # Also replace find_package(Qt6 ... WebEngine ...) to not include WebEngine
+      # since we're finding it separately
+      sed -i 's/find_package(Qt6\([^)]*\)WebEngine\([^)]*\))/find_package(Qt6\1\2)/g' CMakeLists.txt
+      sed -i 's/find_package(Qt6\([^)]*\)WebEngine)/find_package(Qt6\1)/g' CMakeLists.txt
+    fi
     
     # Update CMake minimum version requirement to 3.10
     # Specifically target deps/singleapplication/CMakeLists.txt first
