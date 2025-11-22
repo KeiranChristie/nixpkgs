@@ -94,9 +94,15 @@ stdenv.mkDerivation (finalAttrs: {
         
         # Check if WebEngine appears in the next 10 lines
         if sed -n "''${QT6_LINE},''$((QT6_LINE + 10))p" CMakeLists.txt | grep -qi webengine; then
-          echo "Found WebEngine near find_package, will remove it from COMPONENTS"
-          # Don't insert a separate find_package - just remove WebEngine from COMPONENTS
-          # Qt6WebEngine_DIR is already set in cmakeFlags, which should help Qt6Config.cmake find it
+          echo "Found WebEngine near find_package, inserting find_package for WebEngine components"
+          # Insert find_package calls for WebEngine components before the Qt6 find_package line
+          # Qt6 WebEngine is split into components that need to be found separately
+          sed -i "''${QT6_LINE}i\\
+# Find Qt6WebEngine components separately (Nixpkgs has them as separate packages)\\
+find_package(Qt6WebEngineCore REQUIRED)\\
+find_package(Qt6WebEngineWidgets REQUIRED)\\
+find_package(Qt6WebEngineQuick REQUIRED)\\
+" CMakeLists.txt
           
           # Now remove WebEngine from the Qt6 find_package call (check next 10 lines)
           echo "Removing WebEngine from line $QT6_LINE and following lines"
