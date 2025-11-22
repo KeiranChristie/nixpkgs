@@ -133,6 +133,14 @@ find_package(Qt6WebEngine REQUIRED)\
       sed -i 's/Qt5::/Qt6::/g' CMakeLists.txt
       echo "After replacing Qt5:: with Qt6:::"
       grep -n "Qt5::" CMakeLists.txt || echo "No Qt5:: found (good!)"
+      
+      # Replace Qt6::WebEngine with Qt6::WebEngineWidgets (the main WebEngine component)
+      # Qt6::WebEngine doesn't exist - it's split into WebEngineCore, WebEngineWidgets, WebEngineQuick
+      echo "Looking for Qt6::WebEngine references to replace"
+      grep -n "Qt6::WebEngine" CMakeLists.txt || true
+      sed -i 's/Qt6::WebEngine/Qt6::WebEngineWidgets/g' CMakeLists.txt
+      echo "After replacing Qt6::WebEngine with Qt6::WebEngineWidgets:"
+      grep -n "Qt6::WebEngine" CMakeLists.txt || echo "No Qt6::WebEngine found (good!)"
     fi
     
     # Update CMake minimum version requirement to 3.10
