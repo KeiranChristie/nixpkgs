@@ -53,6 +53,12 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   prePatch = ''
+    # Update CMake minimum version requirement
+    find . -name "CMakeLists.txt" -type f -exec sed -i \
+      -e 's/CMAKE_MINIMUM_REQUIRED(VERSION [0-9.]*)/CMAKE_MINIMUM_REQUIRED(VERSION 3.10)/g' \
+      -e 's/CMAKE_MINIMUM_REQUIRED(VERSION [0-9.]*)/CMAKE_MINIMUM_REQUIRED(VERSION 3.10)/g' \
+      {} \;
+    
     # Update deps/singleapplication/CMakeLists.txt to use Qt6 instead of Qt5
     # This must run before configurePhase
     echo "Patching CMakeLists.txt files to use Qt6..."
