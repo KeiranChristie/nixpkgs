@@ -167,6 +167,13 @@ find_package(Qt6WebEngine REQUIRED)\
     find . -name "*.cpp" -o -name "*.h" | xargs sed -i 's|#include <QtGui/QOpenGLFramebufferObject>|#include <QtOpenGL/QOpenGLFramebufferObject>|g' || true
     find . -name "*.cpp" -o -name "*.h" | xargs sed -i 's|#include "QtGui/QOpenGLFramebufferObject"|#include "QtOpenGL/QOpenGLFramebufferObject"|g' || true
     
+    # Fix Qt6 API changes - remove calls to deprecated/removed methods
+    echo "Fixing Qt6 API changes in mpv.cpp..."
+    # resetOpenGLState() was removed in Qt6 - comment out the calls
+    sed -i 's/->window()->resetOpenGLState();/\/\/ resetOpenGLState() removed in Qt6/g' mpv.cpp || true
+    # setPersistentOpenGLContext() was removed in Qt6 - comment out the call
+    sed -i 's/window()->setPersistentOpenGLContext(true);/\/\/ setPersistentOpenGLContext() removed in Qt6/g' mpv.cpp || true
+    
     # Update CMake minimum version requirement to 3.10
     # Specifically target deps/singleapplication/CMakeLists.txt first
     if [ -f deps/singleapplication/CMakeLists.txt ]; then
