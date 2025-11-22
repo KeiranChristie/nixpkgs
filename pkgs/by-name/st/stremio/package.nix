@@ -64,17 +64,34 @@ stdenv.mkDerivation (finalAttrs: {
     # they're separate packages, so we need to find Qt6WebEngine first
     if [ -f CMakeLists.txt ]; then
       echo "Patching main CMakeLists.txt..."
-      echo "Looking for Qt6 find_package lines:"
-      grep -n "find_package.*Qt6" CMakeLists.txt || true
+      echo "Looking for find_package lines (all):"
+      grep -n "find_package" CMakeLists.txt | head -20 || true
+      echo "Looking for Qt6 references:"
+      grep -n "Qt6" CMakeLists.txt | head -20 || true
+      echo "Looking for WebEngine references:"
+      grep -n -i "webengine" CMakeLists.txt | head -20 || true
+      echo "Lines around line 59 (where error occurs):"
+      sed -n '50,70p' CMakeLists.txt || true
       
-      # Find any line with find_package(Qt6 that might have WebEngine
-      # Check lines around find_package(Qt6 for WebEngine
+      # Try multiple patterns to find Qt6 find_package
       QT6_LINE=$(grep -n "find_package.*Qt6" CMakeLists.txt | head -1 | cut -d: -f1 || echo "")
+      if [ -z "$QT6_LINE" ]; then
+        # Try without the .* pattern
+        QT6_LINE=$(grep -n "find_package.*Qt.*6" CMakeLists.txt | head -1 | cut -d: -f1 || echo "")
+      fi
+      if [ -z "$QT6_LINE" ]; then
+        # Try finding any find_package with WebEngine
+        QT6_LINE=$(grep -n "find_package" CMakeLists.txt | grep -i webengine | head -1 | cut -d: -f1 || echo "")
+      fi
+      
       if [ -n "$QT6_LINE" ]; then
-        echo "Found Qt6 find_package at line $QT6_LINE"
+        echo "Found Qt6/WebEngine find_package at line $QT6_LINE"
+        echo "Content around that line:"
+        sed -n "''$((QT6_LINE - 2)),''$((QT6_LINE + 10))p" CMakeLists.txt || true
+        
         # Check if WebEngine appears in the next 10 lines
         if sed -n "''${QT6_LINE},''$((QT6_LINE + 10))p" CMakeLists.txt | grep -qi webengine; then
-          echo "Found WebEngine near Qt6 find_package, inserting find_package(Qt6WebEngine) before it"
+          echo "Found WebEngine near find_package, inserting find_package(Qt6WebEngine) before it"
           # Insert find_package(Qt6WebEngine REQUIRED) before the Qt6 find_package line
           sed -i "''${QT6_LINE}i\\
 # Find Qt6WebEngine separately (Nixpkgs has it as a separate package)\\
@@ -87,10 +104,23 @@ find_package(Qt6WebEngine REQUIRED)\\
           sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/WebEngine[[:space:]]*//g" CMakeLists.txt
           sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/WebEngine//g" CMakeLists.txt
         fi
+      else
+        echo "WARNING: Could not find Qt6 find_package line, trying to patch line 59 directly"
+        # The error says line 59, so let's check what's there and patch it
+        echo "Line 59 content:"
+        sed -n '59p' CMakeLists.txt || true
+        # Insert before line 59
+        sed -i '59i\
+# Find Qt6WebEngine separately (Nixpkgs has it as a separate package)\
+find_package(Qt6WebEngine REQUIRED)\
+' CMakeLists.txt
+        # Remove WebEngine from lines 62-72 (after insertion)
+        sed -i '62,72s/WebEngine[[:space:]]*//g' CMakeLists.txt
+        sed -i '62,72s/WebEngine//g' CMakeLists.txt
       fi
       
-      echo "After patch, Qt6 find_package lines:"
-      grep -n "find_package.*Qt6" CMakeLists.txt || true
+      echo "After patch, find_package lines:"
+      grep -n "find_package" CMakeLists.txt | head -20 || true
     fi
     
     # Update CMake minimum version requirement to 3.10
