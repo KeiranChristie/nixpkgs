@@ -120,9 +120,17 @@ stdenv.mkDerivation (finalAttrs: {
             echo "Found find_package line with WebEngine at line $FIND_PACKAGE_LINE"
             CURRENT_LINE=$(sed -n "''${FIND_PACKAGE_LINE}p" CMakeLists.txt)
             echo "Current line before removal: $CURRENT_LINE"
-            # Use awk for more reliable string replacement (awk is in stdenv)
-            # Remove WebEngine from COMPONENTS list, handling all cases
-            awk -v line="''${FIND_PACKAGE_LINE}" 'NR == line { gsub(/[[:space:]]*WebEngine[[:space:]]*/, " "); gsub(/[[:space:]]+/, " "); gsub(/[[:space:]]+\)/, ")"); } { print }' CMakeLists.txt > CMakeLists.txt.tmp && mv CMakeLists.txt.tmp CMakeLists.txt
+            # Use sed to remove WebEngine more reliably
+            # First, replace " WebEngine " with " " (with spaces on both sides)
+            sed -i "''${FIND_PACKAGE_LINE}s/ WebEngine / /g" CMakeLists.txt
+            # Then, replace " WebEngine" (space before, end of line or space after)
+            sed -i "''${FIND_PACKAGE_LINE}s/ WebEngine\([[:space:]]\|)\)/ /g" CMakeLists.txt
+            # Then, replace "WebEngine " (start or space before, space after)
+            sed -i "''${FIND_PACKAGE_LINE}s/\([[:space:]]\)WebEngine / /g" CMakeLists.txt
+            # Clean up any double spaces
+            sed -i "''${FIND_PACKAGE_LINE}s/[[:space:]][[:space:]]*/ /g" CMakeLists.txt
+            # Clean up space before closing parenthesis
+            sed -i "''${FIND_PACKAGE_LINE}s/[[:space:]]\+)/)/g" CMakeLists.txt
             echo "After removing WebEngine, the line is:"
             sed -n "''${FIND_PACKAGE_LINE}p" CMakeLists.txt || true
           else
@@ -146,22 +154,41 @@ find_package(Qt6WebEngine REQUIRED)\
       
       echo "After patch, find_package lines:"
       grep -n "find_package" CMakeLists.txt | head -20 || true
-      
-      # Also replace any Qt5:: references with Qt6::
-      echo "Looking for Qt5:: references to replace with Qt6::"
-      grep -n "Qt5::" CMakeLists.txt || true
-      sed -i 's/Qt5::/Qt6::/g' CMakeLists.txt
-      echo "After replacing Qt5:: with Qt6:::"
-      grep -n "Qt5::" CMakeLists.txt || echo "No Qt5:: found (good!)"
-      
-      # Replace Qt6::WebEngine with Qt6::WebEngineWidgets (the main WebEngine component)
-      # Qt6::WebEngine doesn't exist - it's split into WebEngineCore, WebEngineWidgets, WebEngineQuick
-      echo "Looking for Qt6::WebEngine references to replace"
-      grep -n "Qt6::WebEngine" CMakeLists.txt || true
-      sed -i 's/Qt6::WebEngine/Qt6::WebEngineWidgets/g' CMakeLists.txt
-      echo "After replacing Qt6::WebEngine with Qt6::WebEngineWidgets:"
-      grep -n "Qt6::WebEngine" CMakeLists.txt || echo "No Qt6::WebEngine found (good!)"
     fi
+    
+    # Replace Qt5:: references with Qt6:: in ALL CMakeLists.txt files
+    echo "Looking for Qt5:: references in all CMakeLists.txt files..."
+    find . -name "CMakeLists.txt" -type f -exec grep -l "Qt5::" {} \; || true
+    find . -name "CMakeLists.txt" -type f -exec sed -i 's/Qt5::/Qt6::/g' {} \;
+    echo "After replacing Qt5:: with Qt6:: in all files:"
+    find . -name "CMakeLists.txt" -type f -exec grep -H "Qt5::" {} \; || echo "No Qt5:: found (good!)"
+    
+    # Replace Qt6::WebEngine with Qt6::WebEngineWidgets in ALL CMakeLists.txt files
+    # Qt6::WebEngine doesn't exist - it's split into WebEngineCore, WebEngineWidgets, WebEngineQuick
+    echo "Looking for Qt6::WebEngine references in all CMakeLists.txt files..."
+    find . -name "CMakeLists.txt" -type f -exec grep -l "Qt6::WebEngine" {} \; || true
+    find . -name "CMakeLists.txt" -type f -exec sed -i 's/Qt6::WebEngine/Qt6::WebEngineWidgets/g' {} \;
+    echo "After replacing Qt6::WebEngine with Qt6::WebEngineWidgets:"
+    find . -name "CMakeLists.txt" -type f -exec grep -H "Qt6::WebEngine" {} \; || echo "No Qt6::WebEngine found (good!)"
+    
+    # Also ensure WebEngine is removed from COMPONENTS in ALL CMakeLists.txt files
+    echo "Checking for WebEngine in COMPONENTS lists in all CMakeLists.txt files..."
+    find . -name "CMakeLists.txt" -type f | while read file; do
+      if grep -q "find_package.*COMPONENTS.*WebEngine" "$file"; then
+        echo "Found WebEngine in COMPONENTS in $file, removing it..."
+        # Use awk to remove WebEngine from COMPONENTS list
+        awk '{
+          if (match($0, /find_package.*COMPONENTS.*WebEngine/)) {
+            gsub(/[[:space:]]*WebEngine[[:space:]]*/, " ");
+            gsub(/[[:space:]]+/, " ");
+            gsub(/[[:space:]]+\)/, ")");
+          }
+          print
+        }' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+        echo "After removal in $file:"
+        grep "find_package.*COMPONENTS" "$file" || true
+      fi
+    done
     
     # Fix Qt6 header includes in source files
     echo "Fixing Qt6 header includes in source files..."
