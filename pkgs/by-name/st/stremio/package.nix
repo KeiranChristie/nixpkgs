@@ -64,17 +64,30 @@ stdenv.mkDerivation (finalAttrs: {
     # they're separate packages, so we need to find Qt6WebEngine first
     if [ -f CMakeLists.txt ]; then
       echo "Patching main CMakeLists.txt..."
-      # Find Qt6WebEngine separately before Qt6 tries to find it as a component
-      # Insert after cmake_minimum_required and project, but before find_package(Qt6)
-      sed -i '/find_package(Qt6.*WebEngine/i\
-# Find Qt6WebEngine separately (Nixpkgs has it as a separate package)\
-find_package(Qt6WebEngine REQUIRED)\
-' CMakeLists.txt
+      echo "Looking for Qt6 find_package lines:"
+      grep -n "find_package.*Qt6" CMakeLists.txt || true
       
-      # Also replace find_package(Qt6 ... WebEngine ...) to not include WebEngine
-      # since we're finding it separately
-      sed -i 's/find_package(Qt6\([^)]*\)WebEngine\([^)]*\))/find_package(Qt6\1\2)/g' CMakeLists.txt
-      sed -i 's/find_package(Qt6\([^)]*\)WebEngine)/find_package(Qt6\1)/g' CMakeLists.txt
+      # Find the line number of find_package(Qt6 ... WebEngine ...)
+      QT6_LINE=$(grep -n "find_package.*Qt6.*WebEngine" CMakeLists.txt | head -1 | cut -d: -f1 || echo "")
+      if [ -n "$QT6_LINE" ]; then
+        echo "Found Qt6 WebEngine at line $QT6_LINE"
+        # Insert find_package(Qt6WebEngine REQUIRED) before the Qt6 find_package line
+        sed -i "${QT6_LINE}i\\
+# Find Qt6WebEngine separately (Nixpkgs has it as a separate package)\\
+find_package(Qt6WebEngine REQUIRED)\\
+" CMakeLists.txt
+        
+        # Remove WebEngine from the Qt6 find_package call
+        sed -i 's/WebEngine[[:space:]]*//g' CMakeLists.txt
+        sed -i 's/WebEngine//g' CMakeLists.txt
+      else
+        echo "WARNING: Could not find find_package(Qt6 ... WebEngine ...) line"
+        echo "Showing lines around find_package:"
+        grep -A5 -B5 "find_package.*Qt6" CMakeLists.txt || true
+      fi
+      
+      echo "After patch, Qt6 find_package lines:"
+      grep -n "find_package.*Qt6" CMakeLists.txt || true
     fi
     
     # Update CMake minimum version requirement to 3.10
