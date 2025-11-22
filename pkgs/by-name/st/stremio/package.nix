@@ -72,7 +72,8 @@ stdenv.mkDerivation (finalAttrs: {
       if [ -n "$QT6_LINE" ]; then
         echo "Found Qt6 WebEngine at line $QT6_LINE"
         # Insert find_package(Qt6WebEngine REQUIRED) before the Qt6 find_package line
-        sed -i "${QT6_LINE}i\\
+        # Use ''${QT6_LINE} to escape Nix string interpolation
+        sed -i "''${QT6_LINE}i\\
 # Find Qt6WebEngine separately (Nixpkgs has it as a separate package)\\
 find_package(Qt6WebEngine REQUIRED)\\
 " CMakeLists.txt
