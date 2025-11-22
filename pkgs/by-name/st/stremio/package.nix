@@ -213,7 +213,10 @@ find_package(Qt6WebEngine REQUIRED)\
   postInstall = ''
     mkdir -p $out/{bin,share/applications}
     ln -s $out/opt/stremio/stremio $out/bin/stremio
-    mv $out/opt/stremio/smartcode-stremio.desktop $out/share/applications
+    # Move desktop file if it exists
+    if [ -f $out/opt/stremio/smartcode-stremio.desktop ]; then
+      mv $out/opt/stremio/smartcode-stremio.desktop $out/share/applications
+    fi
     install -Dm 644 images/stremio_window.png $out/share/pixmaps/smartcode-stremio.png
     ln -s ${nodejs}/bin/node $out/opt/stremio/node
     ln -s $server $out/opt/stremio/server.js
