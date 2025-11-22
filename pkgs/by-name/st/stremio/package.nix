@@ -3,27 +3,14 @@
   stdenv,
   fetchFromGitHub,
   fetchurl,
-  cef-binary,
+  qt6,
   cmake,
-  pkg-config,
   makeWrapper,
   ffmpeg,
   mpv,
   nodejs,
 }:
 
-let
-  cef = cef-binary.override {
-    version = "141.0.7";
-    gitRevision = "a5714cc";
-    chromiumVersion = "141.0.7390.108";
-
-    srcHashes = {
-      aarch64-linux = "sha256-2A0hVzUVMBemhjnFE/CrKs4CU96Qkxy8S/SieaEJjwE=";
-      x86_64-linux = "sha256-tZzUxeXxbYP8YfIQLbiSyihPcjZM9cd2Ad8gGCSvdGk=";
-    };
-  };
-in
 stdenv.mkDerivation (finalAttrs: {
   pname = "stremio-shell";
   version = "4.4.168";
@@ -47,19 +34,31 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   buildInputs = [
-    cef
+    qt6.qtbase
+    qt6.qtwebengine
     mpv
   ];
 
   nativeBuildInputs = [
     cmake
-    pkg-config
+    qt6.qmake
+    qt6.qt5compat
+    qt6.wrapQtAppsHook
     makeWrapper
   ];
 
   cmakeFlags = [
-    "-DCEF_ROOT=${cef}"
+    "-DCMAKE_PREFIX_PATH=${lib.makeSearchPath "lib/cmake" [ qt6.qtbase qt6.qtwebengine ]}"
   ];
+
+  postPatch = ''
+    # Update deps/singleapplication/CMakeLists.txt to use Qt6 instead of Qt5
+    if [ -f deps/singleapplication/CMakeLists.txt ]; then
+      substituteInPlace deps/singleapplication/CMakeLists.txt \
+        --replace 'find_package(Qt5' 'find_package(Qt6' \
+        --replace 'Qt5::' 'Qt6::'
+    fi
+  '';
 
   postInstall = ''
     mkdir -p $out/{bin,share/applications}
