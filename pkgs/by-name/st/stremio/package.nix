@@ -67,24 +67,26 @@ stdenv.mkDerivation (finalAttrs: {
       echo "Looking for Qt6 find_package lines:"
       grep -n "find_package.*Qt6" CMakeLists.txt || true
       
-      # Find the line number of find_package(Qt6 ... WebEngine ...)
-      QT6_LINE=$(grep -n "find_package.*Qt6.*WebEngine" CMakeLists.txt | head -1 | cut -d: -f1 || echo "")
+      # Find any line with find_package(Qt6 that might have WebEngine
+      # Check lines around find_package(Qt6 for WebEngine
+      QT6_LINE=$(grep -n "find_package.*Qt6" CMakeLists.txt | head -1 | cut -d: -f1 || echo "")
       if [ -n "$QT6_LINE" ]; then
-        echo "Found Qt6 WebEngine at line $QT6_LINE"
-        # Insert find_package(Qt6WebEngine REQUIRED) before the Qt6 find_package line
-        # Use ''${QT6_LINE} to escape Nix string interpolation
-        sed -i "''${QT6_LINE}i\\
+        echo "Found Qt6 find_package at line $QT6_LINE"
+        # Check if WebEngine appears in the next 10 lines
+        if sed -n "''${QT6_LINE},''$((QT6_LINE + 10))p" CMakeLists.txt | grep -qi webengine; then
+          echo "Found WebEngine near Qt6 find_package, inserting find_package(Qt6WebEngine) before it"
+          # Insert find_package(Qt6WebEngine REQUIRED) before the Qt6 find_package line
+          sed -i "''${QT6_LINE}i\\
 # Find Qt6WebEngine separately (Nixpkgs has it as a separate package)\\
 find_package(Qt6WebEngine REQUIRED)\\
 " CMakeLists.txt
-        
-        # Remove WebEngine from the Qt6 find_package call
-        sed -i 's/WebEngine[[:space:]]*//g' CMakeLists.txt
-        sed -i 's/WebEngine//g' CMakeLists.txt
-      else
-        echo "WARNING: Could not find find_package(Qt6 ... WebEngine ...) line"
-        echo "Showing lines around find_package:"
-        grep -A5 -B5 "find_package.*Qt6" CMakeLists.txt || true
+          
+          # Now remove WebEngine from the Qt6 find_package call (check next 10 lines)
+          # Update the line number since we inserted 3 lines
+          UPDATED_QT6_LINE=$((QT6_LINE + 3))
+          sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/WebEngine[[:space:]]*//g" CMakeLists.txt
+          sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/WebEngine//g" CMakeLists.txt
+        fi
       fi
       
       echo "After patch, Qt6 find_package lines:"
