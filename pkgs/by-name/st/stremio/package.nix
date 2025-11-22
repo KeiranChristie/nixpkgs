@@ -72,7 +72,10 @@ stdenv.mkDerivation (finalAttrs: {
       echo "Checking for Qt references in file:"
       grep -n "Qt" deps/singleapplication/CMakeLists.txt || true
       
-      # Update Qt5 to Qt6 - try various patterns
+      # Change QT_DEFAULT_MAJOR_VERSION from 5 to 6
+      sed -i 's/set(QT_DEFAULT_MAJOR_VERSION 5/set(QT_DEFAULT_MAJOR_VERSION 6/g' deps/singleapplication/CMakeLists.txt
+      
+      # Also replace any literal Qt5 references
       sed -i 's/Qt5/Qt6/g' deps/singleapplication/CMakeLists.txt
       sed -i 's/qt5/qt6/g' deps/singleapplication/CMakeLists.txt
       sed -i 's/QT5/QT6/g' deps/singleapplication/CMakeLists.txt
