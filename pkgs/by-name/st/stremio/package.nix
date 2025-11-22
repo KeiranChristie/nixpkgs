@@ -43,6 +43,7 @@ stdenv.mkDerivation (finalAttrs: {
     cmake
     qt6.qmake
     qt6.qt5compat
+    qt6.qtwebengine
     qt6.wrapQtAppsHook
     makeWrapper
   ];
