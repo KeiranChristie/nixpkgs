@@ -35,8 +35,6 @@ stdenv.mkDerivation (finalAttrs: {
 
   buildInputs = [
     qt6.qtbase
-    qt6.qtnetwork
-    qt6.qtopengl
     qt6.qtwebengine
     mpv
   ];
