@@ -65,30 +65,17 @@ stdenv.mkDerivation (finalAttrs: {
       echo "Before patch - first few lines:"
       head -5 deps/singleapplication/CMakeLists.txt || true
       
-      # Update CMake version - try multiple patterns
-      # Handle common version patterns
-      sed -i 's/cmake_minimum_required(VERSION 2.8)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
-      sed -i 's/cmake_minimum_required(VERSION 3.0)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
-      sed -i 's/cmake_minimum_required(VERSION 3.1)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
-      sed -i 's/cmake_minimum_required(VERSION 3.2)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
-      sed -i 's/cmake_minimum_required(VERSION 3.3)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
-      sed -i 's/cmake_minimum_required(VERSION 3.4)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
-      sed -i 's/cmake_minimum_required(VERSION 3.5)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
-      sed -i 's/cmake_minimum_required(VERSION 3.6)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
-      sed -i 's/cmake_minimum_required(VERSION 3.7)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
-      sed -i 's/cmake_minimum_required(VERSION 3.8)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
-      sed -i 's/cmake_minimum_required(VERSION 3.9)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
+      # Update CMake version - use extended regex to match any version including 3.7.0
+      sed -i -E 's/cmake_minimum_required\(VERSION [0-9]+\.[0-9]+(\.[0-9]+)?\)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
       
-      # Also try with extended regex for any version
-      sed -i -E 's/cmake_minimum_required\(VERSION [0-9]+\.[0-9]+\)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
+      # Update Qt5 to Qt6 - check what's actually in the file first
+      echo "Checking for Qt references in file:"
+      grep -n "Qt" deps/singleapplication/CMakeLists.txt || true
       
-      # Update Qt5 to Qt6 - be very explicit
-      substituteInPlace deps/singleapplication/CMakeLists.txt \
-        --replace 'find_package(Qt5' 'find_package(Qt6' \
-        --replace 'Qt5::' 'Qt6::' \
-        --replace 'QT5_' 'QT6_' \
-        --replace 'Qt5 ' 'Qt6 ' \
-        --replace 'Qt5)' 'Qt6)'
+      # Update Qt5 to Qt6 - try various patterns
+      sed -i 's/Qt5/Qt6/g' deps/singleapplication/CMakeLists.txt
+      sed -i 's/qt5/qt6/g' deps/singleapplication/CMakeLists.txt
+      sed -i 's/QT5/QT6/g' deps/singleapplication/CMakeLists.txt
       
       echo "After patch - first few lines:"
       head -5 deps/singleapplication/CMakeLists.txt || true
