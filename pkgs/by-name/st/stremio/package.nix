@@ -68,6 +68,21 @@ stdenv.mkDerivation (finalAttrs: {
     # they're separate packages, so we need to find Qt6WebEngine first
     if [ -f CMakeLists.txt ]; then
       echo "Patching main CMakeLists.txt..."
+      # First, ensure QT_DEFAULT_MAJOR_VERSION is set to 6 if it exists
+      if grep -q "QT_DEFAULT_MAJOR_VERSION" CMakeLists.txt; then
+        echo "Setting QT_DEFAULT_MAJOR_VERSION to 6 in main CMakeLists.txt"
+        sed -i 's/set(QT_DEFAULT_MAJOR_VERSION 5/set(QT_DEFAULT_MAJOR_VERSION 6/g' CMakeLists.txt
+        sed -i 's/set(QT_DEFAULT_MAJOR_VERSION "5"/set(QT_DEFAULT_MAJOR_VERSION "6"/g' CMakeLists.txt
+      else
+        echo "QT_DEFAULT_MAJOR_VERSION not found, adding it before first find_package"
+        # Find the first find_package line and insert QT_DEFAULT_MAJOR_VERSION before it
+        FIRST_FIND=$(grep -n "find_package" CMakeLists.txt | head -1 | cut -d: -f1 || echo "")
+        if [ -n "$FIRST_FIND" ]; then
+          sed -i "''$((FIRST_FIND - 1))i\\
+set(QT_DEFAULT_MAJOR_VERSION 6)\\
+" CMakeLists.txt
+        fi
+      fi
       echo "Looking for find_package lines (all):"
       grep -n "find_package" CMakeLists.txt | head -20 || true
       echo "Looking for Qt6 references:"
@@ -273,6 +288,13 @@ find_package(Qt6WebEngine REQUIRED)\
     maintainers = with lib.maintainers; [
       griffi-gh
     ];
-    platforms = lib.platforms.linux;
+    # Restrict to platforms where qt6.qtwebengine is available
+    # qtwebengine supports: x86_64-linux, aarch64-linux, armv7a-linux, armv7l-linux
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+      "armv7a-linux"
+      "armv7l-linux"
+    ];
   };
 })
