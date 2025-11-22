@@ -166,13 +166,17 @@ find_package(Qt6WebEngine REQUIRED)\
     # QtGui/QOpenGLFramebufferObject -> QtOpenGL/QOpenGLFramebufferObject in Qt6
     find . -name "*.cpp" -o -name "*.h" | xargs sed -i 's|#include <QtGui/QOpenGLFramebufferObject>|#include <QtOpenGL/QOpenGLFramebufferObject>|g' || true
     find . -name "*.cpp" -o -name "*.h" | xargs sed -i 's|#include "QtGui/QOpenGLFramebufferObject"|#include "QtOpenGL/QOpenGLFramebufferObject"|g' || true
+    # QNetworkConfigurationManager was removed in Qt6 - comment out the include and usage
+    find . -name "*.cpp" -o -name "*.h" | xargs sed -i '/#include.*QNetworkConfigurationManager/s/^/\/\/ QNetworkConfigurationManager removed in Qt6 - /' || true
     
     # Fix Qt6 API changes - remove calls to deprecated/removed methods
-    echo "Fixing Qt6 API changes in mpv.cpp..."
+    echo "Fixing Qt6 API changes..."
     # resetOpenGLState() was removed in Qt6 - comment out the entire lines
     sed -i '/->window()->resetOpenGLState();/s/^/\/\/ /' mpv.cpp || true
     # setPersistentOpenGLContext() was removed in Qt6 - comment out the entire line
     sed -i '/window()->setPersistentOpenGLContext(true);/s/^/\/\/ /' mpv.cpp || true
+    # QNetworkConfigurationManager was removed in Qt6 - comment out usage
+    find . -name "*.cpp" -o -name "*.h" | xargs sed -i '/QNetworkConfigurationManager/s/^/\/\/ /' || true
     
     # Update CMake minimum version requirement to 3.10
     # Specifically target deps/singleapplication/CMakeLists.txt first
