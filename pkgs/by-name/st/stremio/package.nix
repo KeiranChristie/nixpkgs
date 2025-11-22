@@ -217,7 +217,10 @@ find_package(Qt6WebEngine REQUIRED)\
     if [ -f $out/opt/stremio/smartcode-stremio.desktop ]; then
       mv $out/opt/stremio/smartcode-stremio.desktop $out/share/applications
     fi
-    install -Dm 644 images/stremio_window.png $out/share/pixmaps/smartcode-stremio.png
+    # Install icon if it exists
+    if [ -f images/stremio_window.png ]; then
+      install -Dm 644 images/stremio_window.png $out/share/pixmaps/smartcode-stremio.png
+    fi
     ln -s ${nodejs}/bin/node $out/opt/stremio/node
     ln -s $server $out/opt/stremio/server.js
     wrapProgram $out/bin/stremio \
