@@ -126,6 +126,13 @@ find_package(Qt6WebEngine REQUIRED)\
       
       echo "After patch, find_package lines:"
       grep -n "find_package" CMakeLists.txt | head -20 || true
+      
+      # Also replace any Qt5:: references with Qt6::
+      echo "Looking for Qt5:: references to replace with Qt6::"
+      grep -n "Qt5::" CMakeLists.txt || true
+      sed -i 's/Qt5::/Qt6::/g' CMakeLists.txt
+      echo "After replacing Qt5:: with Qt6:::"
+      grep -n "Qt5::" CMakeLists.txt || echo "No Qt5:: found (good!)"
     fi
     
     # Update CMake minimum version requirement to 3.10
