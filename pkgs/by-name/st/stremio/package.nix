@@ -94,20 +94,22 @@ stdenv.mkDerivation (finalAttrs: {
         
         # Check if WebEngine appears in the next 10 lines
         if sed -n "''${QT6_LINE},''$((QT6_LINE + 10))p" CMakeLists.txt | grep -qi webengine; then
-          echo "Found WebEngine near find_package, inserting find_package for WebEngine components"
-          # Insert find_package calls for WebEngine components before the Qt6 find_package line
-          # Qt6 WebEngine is split into components that need to be found separately
-          # Use ed to insert the lines properly
-          {
-            echo "''$((QT6_LINE - 1))a"
-            echo "# Find Qt6WebEngine components separately (Nixpkgs has them as separate packages)"
-            echo "find_package(Qt6WebEngineCore REQUIRED)"
-            echo "find_package(Qt6WebEngineWidgets REQUIRED)"
-            echo "find_package(Qt6WebEngineQuick REQUIRED)"
-            echo "."
-            echo "w"
-            echo "q"
-          } | ed -s CMakeLists.txt
+          echo "Found WebEngine near find_package, replacing find_package line"
+          # Replace the find_package line to include WebEngine component finds before it
+          # Read the original line first
+          ORIGINAL_LINE=$(sed -n "''${QT6_LINE}p" CMakeLists.txt)
+          echo "Original line: $ORIGINAL_LINE"
+          # Create replacement that inserts WebEngine finds before the original line
+          # Use perl for reliable multi-line replacement
+          perl -i -pe "
+            if (\$. == ''${QT6_LINE} && /find_package.*WebEngine/) {
+              \$_ = \"# Find Qt6WebEngine components separately (Nixpkgs has them as separate packages)\\n\" .
+                   \"find_package(Qt6WebEngineCore REQUIRED)\\n\" .
+                   \"find_package(Qt6WebEngineWidgets REQUIRED)\\n\" .
+                   \"find_package(Qt6WebEngineQuick REQUIRED)\\n\" .
+                   \$_;
+            }
+          " CMakeLists.txt
           
           # Now remove WebEngine from the Qt6 find_package call (check next 10 lines)
           echo "Removing WebEngine from line $QT6_LINE and following lines"
