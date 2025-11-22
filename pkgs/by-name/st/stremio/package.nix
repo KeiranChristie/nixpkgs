@@ -53,13 +53,22 @@ stdenv.mkDerivation (finalAttrs: {
   ];
 
   postPatch = ''
-    # Update all CMakeLists.txt files to use Qt6 instead of Qt5
-    find . -name "CMakeLists.txt" -type f | while read file; do
-      sed -i \
-        -e 's/find_package(Qt5/find_package(Qt6/g' \
-        -e 's/Qt5::/Qt6::/g' \
-        -e 's/QT5_/QT6_/g' \
-        "$file"
+    # Update deps/singleapplication/CMakeLists.txt to use Qt6 instead of Qt5
+    if [ -f deps/singleapplication/CMakeLists.txt ]; then
+      substituteInPlace deps/singleapplication/CMakeLists.txt \
+        --replace 'find_package(Qt5' 'find_package(Qt6' \
+        --replace 'Qt5::' 'Qt6::' \
+        --replace 'QT5_' 'QT6_'
+    fi
+    
+    # Also check and update any other CMakeLists.txt files that might reference Qt5
+    find . -name "CMakeLists.txt" -type f | while read -r file; do
+      if grep -q "Qt5" "$file" 2>/dev/null; then
+        substituteInPlace "$file" \
+          --replace 'find_package(Qt5' 'find_package(Qt6' \
+          --replace 'Qt5::' 'Qt6::' \
+          --replace 'QT5_' 'QT6_'
+      fi
     done
   '';
 
