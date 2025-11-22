@@ -54,25 +54,43 @@ stdenv.mkDerivation (finalAttrs: {
 
   prePatch = ''
     # Update CMake minimum version requirement to 3.10
-    # Use sed with extended regex to match any version number
-    find . -name "CMakeLists.txt" -type f | while read -r file; do
-      if grep -q "CMAKE_MINIMUM_REQUIRED" "$file"; then
-        # Match CMAKE_MINIMUM_REQUIRED(VERSION X.Y) or CMAKE_MINIMUM_REQUIRED(VERSION X.Y.Z)
-        sed -i -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION [0-9]+\.[0-9]+([0-9]+\.[0-9]+)?\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.10)/g' "$file"
-      fi
-    done
-    
-    # Update deps/singleapplication/CMakeLists.txt to use Qt6 instead of Qt5
-    # This must run before configurePhase
-    echo "Patching CMakeLists.txt files to use Qt6..."
-    find . -name "CMakeLists.txt" -type f -exec grep -l "Qt5" {} \; | while read -r file; do
-      echo "Patching $file"
-      substituteInPlace "$file" \
+    # Specifically target deps/singleapplication/CMakeLists.txt first
+    if [ -f deps/singleapplication/CMakeLists.txt ]; then
+      echo "Patching deps/singleapplication/CMakeLists.txt"
+      # Update CMake version - handle both lowercase and uppercase
+      sed -i -E 's/cmake_minimum_required\(VERSION [0-9]+\.[0-9]+([0-9]+\.[0-9]+)?\)/cmake_minimum_required(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
+      sed -i -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION [0-9]+\.[0-9]+([0-9]+\.[0-9]+)?\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.10)/g' deps/singleapplication/CMakeLists.txt
+      # Update Qt5 to Qt6
+      substituteInPlace deps/singleapplication/CMakeLists.txt \
         --replace 'find_package(Qt5' 'find_package(Qt6' \
         --replace 'Qt5::' 'Qt6::' \
         --replace 'QT5_' 'QT6_' \
         --replace 'Qt5 ' 'Qt6 ' \
         --replace 'Qt5)' 'Qt6)'
+      echo "Verifying patch..."
+      grep -E "(cmake_minimum_required|CMAKE_MINIMUM_REQUIRED|find_package\(Qt)" deps/singleapplication/CMakeLists.txt || true
+    fi
+    
+    # Update all other CMakeLists.txt files
+    find . -name "CMakeLists.txt" -type f | while read -r file; do
+      # Skip the one we already patched
+      [ "$file" = "./deps/singleapplication/CMakeLists.txt" ] && continue
+      
+      # Update CMake version
+      if grep -qE "(cmake_minimum_required|CMAKE_MINIMUM_REQUIRED)" "$file"; then
+        sed -i -E 's/cmake_minimum_required\(VERSION [0-9]+\.[0-9]+([0-9]+\.[0-9]+)?\)/cmake_minimum_required(VERSION 3.10)/g' "$file"
+        sed -i -E 's/CMAKE_MINIMUM_REQUIRED\(VERSION [0-9]+\.[0-9]+([0-9]+\.[0-9]+)?\)/CMAKE_MINIMUM_REQUIRED(VERSION 3.10)/g' "$file"
+      fi
+      
+      # Update Qt5 to Qt6
+      if grep -q "Qt5" "$file"; then
+        substituteInPlace "$file" \
+          --replace 'find_package(Qt5' 'find_package(Qt6' \
+          --replace 'Qt5::' 'Qt6::' \
+          --replace 'QT5_' 'QT6_' \
+          --replace 'Qt5 ' 'Qt6 ' \
+          --replace 'Qt5)' 'Qt6)'
+      fi
     done
   '';
 
