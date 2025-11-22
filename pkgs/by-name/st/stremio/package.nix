@@ -111,16 +111,18 @@ stdenv.mkDerivation (finalAttrs: {
           echo "Verifying inserted lines:"
           sed -n "''$((QT6_LINE)),''$((QT6_LINE + 4))p" CMakeLists.txt
           
-          # Now remove WebEngine from the Qt6 find_package call (check next 10 lines)
-          echo "Removing WebEngine from line $QT6_LINE and following lines"
+          # Now remove WebEngine from the Qt6 find_package call
+          # Update line number since we inserted 4 lines
+          UPDATED_QT6_LINE=$((QT6_LINE + 4))
+          echo "Removing WebEngine from line $UPDATED_QT6_LINE (original was $QT6_LINE)"
           # Remove WebEngine from COMPONENTS list - handle spaces before and after
-          sed -i "''${QT6_LINE},''$((QT6_LINE + 10))s/[[:space:]]*WebEngine[[:space:]]*/ /g" CMakeLists.txt
-          sed -i "''${QT6_LINE},''$((QT6_LINE + 10))s/WebEngine[[:space:]]*//g" CMakeLists.txt
-          sed -i "''${QT6_LINE},''$((QT6_LINE + 10))s/[[:space:]]*WebEngine//g" CMakeLists.txt
+          sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/[[:space:]]*WebEngine[[:space:]]*/ /g" CMakeLists.txt
+          sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/WebEngine[[:space:]]*//g" CMakeLists.txt
+          sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/[[:space:]]*WebEngine//g" CMakeLists.txt
           # Clean up any double spaces that might have been created
-          sed -i "''${QT6_LINE},''$((QT6_LINE + 10))s/[[:space:]][[:space:]]*/ /g" CMakeLists.txt
+          sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/[[:space:]][[:space:]]*/ /g" CMakeLists.txt
           echo "After removing WebEngine, the line is:"
-          sed -n "''${QT6_LINE}p" CMakeLists.txt || true
+          sed -n "''${UPDATED_QT6_LINE}p" CMakeLists.txt || true
         fi
       else
         echo "WARNING: Could not find Qt6 find_package line, trying to patch line 59 directly"
