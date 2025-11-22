@@ -49,15 +49,18 @@ stdenv.mkDerivation (finalAttrs: {
 
   cmakeFlags = [
     "-DCMAKE_PREFIX_PATH=${lib.makeSearchPath "lib/cmake" [ qt6.qtbase qt6.qtwebengine ]}"
+    "-DQt6_DIR=${qt6.qtbase}/lib/cmake/Qt6"
   ];
 
   postPatch = ''
-    # Update deps/singleapplication/CMakeLists.txt to use Qt6 instead of Qt5
-    if [ -f deps/singleapplication/CMakeLists.txt ]; then
-      substituteInPlace deps/singleapplication/CMakeLists.txt \
-        --replace 'find_package(Qt5' 'find_package(Qt6' \
-        --replace 'Qt5::' 'Qt6::'
-    fi
+    # Update all CMakeLists.txt files to use Qt6 instead of Qt5
+    find . -name "CMakeLists.txt" -type f | while read file; do
+      sed -i \
+        -e 's/find_package(Qt5/find_package(Qt6/g' \
+        -e 's/Qt5::/Qt6::/g' \
+        -e 's/QT5_/QT6_/g' \
+        "$file"
+    done
   '';
 
   postInstall = ''
