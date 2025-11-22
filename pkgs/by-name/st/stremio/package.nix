@@ -35,6 +35,8 @@ stdenv.mkDerivation (finalAttrs: {
 
   buildInputs = [
     qt6.qtbase
+    qt6.qtnetwork
+    qt6.qtopengl
     qt6.qtwebengine
     mpv
   ];
@@ -157,6 +159,15 @@ find_package(Qt6WebEngine REQUIRED)\
       echo "After replacing Qt6::WebEngine with Qt6::WebEngineWidgets:"
       grep -n "Qt6::WebEngine" CMakeLists.txt || echo "No Qt6::WebEngine found (good!)"
     fi
+    
+    # Fix Qt6 header includes in source files
+    echo "Fixing Qt6 header includes in source files..."
+    # QtWebEngine -> QtWebEngineWidgets
+    find . -name "*.cpp" -o -name "*.h" | xargs sed -i 's/#include <QtWebEngine>/#include <QtWebEngineWidgets>/g' || true
+    find . -name "*.cpp" -o -name "*.h" | xargs sed -i 's/#include "QtWebEngine"/#include "QtWebEngineWidgets"/g' || true
+    # QtGui/QOpenGLFramebufferObject -> QtOpenGL/QOpenGLFramebufferObject in Qt6
+    find . -name "*.cpp" -o -name "*.h" | xargs sed -i 's|#include <QtGui/QOpenGLFramebufferObject>|#include <QtOpenGL/QOpenGLFramebufferObject>|g' || true
+    find . -name "*.cpp" -o -name "*.h" | xargs sed -i 's|#include "QtGui/QOpenGLFramebufferObject"|#include "QtOpenGL/QOpenGLFramebufferObject"|g' || true
     
     # Update CMake minimum version requirement to 3.10
     # Specifically target deps/singleapplication/CMakeLists.txt first
