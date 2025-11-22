@@ -52,23 +52,18 @@ stdenv.mkDerivation (finalAttrs: {
     "-DQt6_DIR=${qt6.qtbase}/lib/cmake/Qt6"
   ];
 
-  postPatch = ''
+  prePatch = ''
     # Update deps/singleapplication/CMakeLists.txt to use Qt6 instead of Qt5
-    if [ -f deps/singleapplication/CMakeLists.txt ]; then
-      substituteInPlace deps/singleapplication/CMakeLists.txt \
+    # This must run before configurePhase
+    echo "Patching CMakeLists.txt files to use Qt6..."
+    find . -name "CMakeLists.txt" -type f -exec grep -l "Qt5" {} \; | while read -r file; do
+      echo "Patching $file"
+      substituteInPlace "$file" \
         --replace 'find_package(Qt5' 'find_package(Qt6' \
         --replace 'Qt5::' 'Qt6::' \
-        --replace 'QT5_' 'QT6_'
-    fi
-    
-    # Also check and update any other CMakeLists.txt files that might reference Qt5
-    find . -name "CMakeLists.txt" -type f | while read -r file; do
-      if grep -q "Qt5" "$file" 2>/dev/null; then
-        substituteInPlace "$file" \
-          --replace 'find_package(Qt5' 'find_package(Qt6' \
-          --replace 'Qt5::' 'Qt6::' \
-          --replace 'QT5_' 'QT6_'
-      fi
+        --replace 'QT5_' 'QT6_' \
+        --replace 'Qt5 ' 'Qt6 ' \
+        --replace 'Qt5)' 'Qt6)'
     done
   '';
 
