@@ -100,13 +100,16 @@ stdenv.mkDerivation (finalAttrs: {
           echo "Original line: $ORIGINAL_LINE"
           # Create a patch by inserting lines before the find_package line
           # Use head and tail to split the file, insert the new lines, then rejoin
+          # Use printf to avoid any shell interpretation issues
           head -n "''$((QT6_LINE - 1))" CMakeLists.txt > CMakeLists.txt.new
-          echo "# Find Qt6WebEngine components separately (Nixpkgs has them as separate packages)" >> CMakeLists.txt.new
-          echo "find_package(Qt6WebEngineCore REQUIRED)" >> CMakeLists.txt.new
-          echo "find_package(Qt6WebEngineWidgets REQUIRED)" >> CMakeLists.txt.new
-          echo "find_package(Qt6WebEngineQuick REQUIRED)" >> CMakeLists.txt.new
+          printf '%s\n' "# Find Qt6WebEngine components separately (Nixpkgs has them as separate packages)" >> CMakeLists.txt.new
+          printf '%s\n' "find_package(Qt6WebEngineCore REQUIRED)" >> CMakeLists.txt.new
+          printf '%s\n' "find_package(Qt6WebEngineWidgets REQUIRED)" >> CMakeLists.txt.new
+          printf '%s\n' "find_package(Qt6WebEngineQuick REQUIRED)" >> CMakeLists.txt.new
           tail -n +"''${QT6_LINE}" CMakeLists.txt >> CMakeLists.txt.new
           mv CMakeLists.txt.new CMakeLists.txt
+          echo "Verifying inserted lines:"
+          sed -n "''$((QT6_LINE)),''$((QT6_LINE + 4))p" CMakeLists.txt
           
           # Now remove WebEngine from the Qt6 find_package call (check next 10 lines)
           echo "Removing WebEngine from line $QT6_LINE and following lines"
