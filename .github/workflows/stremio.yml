@@ -53,10 +53,8 @@ jobs:
           extraPullNames: nixpkgs-gha
 
       - name: Build stremio
-        env:
-          NIXPKGS_ALLOW_UNFREE: 1
         run: |
-          nix-build -A stremio --show-trace
+          nix-build -E 'with import ./. { config.allowUnfree = true; }; stremio' --show-trace
 
       - name: Check build result
         run: |
