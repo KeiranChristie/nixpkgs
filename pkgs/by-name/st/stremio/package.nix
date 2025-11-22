@@ -50,6 +50,7 @@ stdenv.mkDerivation (finalAttrs: {
   cmakeFlags = [
     "-DCMAKE_PREFIX_PATH=${lib.makeSearchPath "lib/cmake" [ qt6.qtbase qt6.qtwebengine ]}"
     "-DQt6_DIR=${qt6.qtbase}/lib/cmake/Qt6"
+    "-DQt6WebEngine_DIR=${qt6.qtwebengine}/lib/cmake/Qt6WebEngine"
   ];
 
   prePatch = ''
