@@ -3,11 +3,27 @@
   stdenv,
   fetchFromGitHub,
   fetchurl,
-  libsForQt5,
+  cef-binary,
+  cmake,
+  pkg-config,
+  makeWrapper,
   ffmpeg,
   mpv,
   nodejs,
 }:
+
+let
+  cef = cef-binary.override {
+    version = "141.0.7";
+    gitRevision = "a5714cc";
+    chromiumVersion = "141.0.7390.108";
+
+    srcHashes = {
+      aarch64-linux = "sha256-2A0hVzUVMBemhjnFE/CrKs4CU96Qkxy8S/SieaEJjwE=";
+      x86_64-linux = "sha256-tZzUxeXxbYP8YfIQLbiSyihPcjZM9cd2Ad8gGCSvdGk=";
+    };
+  };
+in
 stdenv.mkDerivation (finalAttrs: {
   pname = "stremio-shell";
   version = "4.4.168";
@@ -31,13 +47,18 @@ stdenv.mkDerivation (finalAttrs: {
   };
 
   buildInputs = [
-    libsForQt5.qt5.qtwebengine
+    cef
     mpv
   ];
 
   nativeBuildInputs = [
-    libsForQt5.qmake
-    libsForQt5.qt5.wrapQtAppsHook
+    cmake
+    pkg-config
+    makeWrapper
+  ];
+
+  cmakeFlags = [
+    "-DCEF_ROOT=${cef}"
   ];
 
   postInstall = ''
