@@ -97,19 +97,16 @@ stdenv.mkDerivation (finalAttrs: {
           echo "Found WebEngine near find_package, inserting find_package for WebEngine components"
           # Insert find_package calls for WebEngine components before the Qt6 find_package line
           # Qt6 WebEngine is split into components that need to be found separately
-          # Insert lines in reverse order to maintain correct line numbers
-          sed -i "''${QT6_LINE}i\\
-find_package(Qt6WebEngineQuick REQUIRED)\\
-" CMakeLists.txt
-          sed -i "''${QT6_LINE}i\\
-find_package(Qt6WebEngineWidgets REQUIRED)\\
-" CMakeLists.txt
-          sed -i "''${QT6_LINE}i\\
-find_package(Qt6WebEngineCore REQUIRED)\\
-" CMakeLists.txt
-          sed -i "''${QT6_LINE}i\\
-# Find Qt6WebEngine components separately (Nixpkgs has them as separate packages)\\
-" CMakeLists.txt
+          # Use awk to insert the lines properly
+          awk -v line="''${QT6_LINE}" '
+            NR == line {
+              print "# Find Qt6WebEngine components separately (Nixpkgs has them as separate packages)"
+              print "find_package(Qt6WebEngineCore REQUIRED)"
+              print "find_package(Qt6WebEngineWidgets REQUIRED)"
+              print "find_package(Qt6WebEngineQuick REQUIRED)"
+            }
+            { print }
+          ' CMakeLists.txt > CMakeLists.txt.tmp && mv CMakeLists.txt.tmp CMakeLists.txt
           
           # Now remove WebEngine from the Qt6 find_package call (check next 10 lines)
           echo "Removing WebEngine from line $QT6_LINE and following lines"
