@@ -101,8 +101,15 @@ find_package(Qt6WebEngine REQUIRED)\\
           # Now remove WebEngine from the Qt6 find_package call (check next 10 lines)
           # Update the line number since we inserted 3 lines
           UPDATED_QT6_LINE=$((QT6_LINE + 3))
+          echo "Removing WebEngine from line $UPDATED_QT6_LINE and following lines"
+          # Remove WebEngine from COMPONENTS list - handle spaces before and after
+          sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/[[:space:]]*WebEngine[[:space:]]*/ /g" CMakeLists.txt
           sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/WebEngine[[:space:]]*//g" CMakeLists.txt
-          sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/WebEngine//g" CMakeLists.txt
+          sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/[[:space:]]*WebEngine//g" CMakeLists.txt
+          # Clean up any double spaces that might have been created
+          sed -i "''${UPDATED_QT6_LINE},''$((UPDATED_QT6_LINE + 10))s/[[:space:]][[:space:]]*/ /g" CMakeLists.txt
+          echo "After removing WebEngine, the line is:"
+          sed -n "''${UPDATED_QT6_LINE}p" CMakeLists.txt || true
         fi
       else
         echo "WARNING: Could not find Qt6 find_package line, trying to patch line 59 directly"
